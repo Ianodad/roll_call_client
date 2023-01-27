@@ -1,11 +1,144 @@
-import Head from 'next/head'
-import Image from 'next/image'
-import { Inter } from '@next/font/google'
-import styles from '@/styles/Home.module.css'
+import Head from "next/head";
+import Image from "next/image";
+import { Inter } from "@next/font/google";
+import styles from "@/styles/Home.module.css";
+import { AiFillFileAdd, AiFillDelete, AiFillEdit } from "react-icons/ai";
+import AddModal from "@/components/AddModal";
+import EditModal from "@/components/EditModal";
+import { useRouter } from "next/router";
+import cx from "classnames";
 
-const inter = Inter({ subsets: ['latin'] })
+import { useEffect, useState, useId } from "react";
+import axios from "axios";
 
+export interface employeeProps {
+  _id?: string | undefined;
+  firstName?: string | undefined;
+  lastName?: string | undefined;
+  email?: string | undefined;
+  salary?: number | undefined;
+  employmentNumber: number | undefined;
+  createdAt?: Date | undefined;
+  updatedAt?: Date | undefined;
+}
 export default function Home() {
+  const [data, setData] = useState<employeeProps[]>([]);
+  const [showAddModal, setAddModalVisibility] = useState<boolean>(false);
+  const [selectEditedEmployee, setSelectEditedEmployee] =
+    useState<employeeProps>();
+  const [showUpdateModal, setUpdateModalVisibility] = useState<boolean>(false);
+
+  const router = useRouter();
+  const tempPostId = useId();
+  const url = "http://localhost:8000/api/employee/";
+  useEffect(() => {
+    (async () => {
+      const { data } = await axios.get(url);
+      console.log("data", data);
+      setData(data);
+    })();
+  }, []);
+
+  const handleAddEmployee = async ({
+    firstName,
+    lastName,
+    email,
+    salary,
+    employmentNumber,
+  }: employeeProps) => {
+    // add Note optimistically to ui
+    let oldEmployeeState = data;
+    try {
+      const addEmployee = [
+        ...oldEmployeeState,
+        {
+          _id: tempPostId,
+          firstName,
+          lastName,
+          email,
+          salary,
+          employmentNumber,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      ];
+      // sets the new note to state locally
+      setData(addEmployee);
+      // axios for post object of values
+      const { data } = await axios.post(`${url}create`, {
+        firstName,
+        lastName,
+        email,
+        salary,
+        employmentNumber,
+      });
+      if (data) {
+        router.reload();
+      }
+    } catch (error) {
+      console.error(error);
+      setData(oldEmployeeState);
+    }
+  };
+
+  const handleDeleteEmployee = async (id: string) => {
+    try {
+      //delete note base on id
+      const removeItem = data.filter((employee) => employee._id !== id);
+      setData(removeItem);
+      // set id to dynamically delete call
+      await axios.delete(`${url}${id}`);
+      router.reload();
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleSelectEditedEmployee = (selectEmployee: employeeProps) => {
+    setSelectEditedEmployee(selectEmployee);
+    setUpdateModalVisibility(!showUpdateModal);
+  };
+
+  const onSelectEditedEmployee = async ({
+    title,
+    content,
+    color,
+  }: noteProps) => {
+    // add Note optimistically to ui
+    let oldNotesState = notes;
+    try {
+      // manipulate the edit in the
+      const editNotes = notes.map((note) => {
+        if (note.id === selectEditedNote?.id) {
+          return {
+            ...note,
+            title,
+            content,
+            color,
+            updatedAt: new Date(),
+          };
+        }
+        return note;
+      });
+      // Set edited Array to state
+      setNotes(editNotes);
+      // pass note edits to a put to api endpoint
+      const { data } = await axios.put(`/api/notes/${selectEditedNote?.id}`, {
+        title,
+        content,
+        color,
+      });
+      if (data) {
+        router.reload();
+      }
+      setUpdateModalVisibility(!showUpdateModal);
+      setSelectEditedNote(undefined);
+    } catch (error) {
+      setNotes(oldNotesState);
+      console.error(error);
+    }
+  };
+
   return (
     <>
       <Head>
@@ -14,110 +147,55 @@ export default function Home() {
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <main className={styles.main}>
-        <div className={styles.description}>
-          <p>
-            Get started by editing&nbsp;
-            <code className={styles.code}>pages/index.tsx</code>
-          </p>
-          <div>
-            <a
-              href="https://vercel.com?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              By{' '}
-              <Image
-                src="/vercel.svg"
-                alt="Vercel Logo"
-                className={styles.vercelLogo}
-                width={100}
-                height={24}
-                priority
-              />
-            </a>
-          </div>
-        </div>
-
-        <div className={styles.center}>
-          <Image
-            className={styles.logo}
-            src="/next.svg"
-            alt="Next.js Logo"
-            width={180}
-            height={37}
-            priority
-          />
-          <div className={styles.thirteen}>
-            <Image
-              src="/thirteen.svg"
-              alt="13"
-              width={40}
-              height={31}
-              priority
+      <main className={cx(styles.main, "flex items-center justify-center")}>
+        <div className="container ">
+          {showAddModal && (
+            <AddModal
+              onHandleAddEmployee={handleAddEmployee}
+              showAddModal={showAddModal}
+              setAddModalVisibility={setAddModalVisibility}
             />
+          )}
+
+          {/* {showUpdateModal && (
+            <EditModal
+              onHandleEditEmployee={onSelectEditedEmployee}
+              selectEditedEmployee={selectEditedEmployee}
+              showUpdateModal={showUpdateModal}
+              setUpdateModalVisibility={setUpdateModalVisibility}
+            />
+          )} */}
+          <div
+            className="w-16 hover:scale-125 hover:duration-700 ease-in-out duration-700 ease-out-in"
+            onClick={() => setAddModalVisibility(!showAddModal)}
+          >
+            <AiFillFileAdd size={70} />
           </div>
-        </div>
-
-        <div className={styles.grid}>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Docs <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Find in-depth information about Next.js features and&nbsp;API.
-            </p>
-          </a>
-
-          <a
-            href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Learn <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Learn about Next.js in an interactive course with&nbsp;quizzes!
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Templates <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Discover and deploy boilerplate example Next.js&nbsp;projects.
-            </p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <h2 className={inter.className}>
-              Deploy <span>-&gt;</span>
-            </h2>
-            <p className={inter.className}>
-              Instantly deploy your Next.js site to a shareable URL
-              with&nbsp;Vercel.
-            </p>
-          </a>
+          <h1 className="text-2xl">Employees list </h1>
+          {data.map((employee: employeeProps) => {
+            const list = (
+              <>
+                <ul className="mb-3 mb-t shadow-md border-2 border-sky-500 w-60">
+                  <ul className="">
+                    <li>Id: {employee._id}</li>
+                    <li>
+                      Names: {employee.firstName} {employee.lastName}
+                    </li>
+                    <li>Age: {employee.email}</li>
+                    <li>Employee Number: {employee.employmentNumber}</li>
+                    <li>Salary: {employee.salary}</li>
+                    <AiFillDelete
+                      className="w-8 h-8 hover:scale-125"
+                      onClick={() => handleDeleteEmployee(employee._id!)}
+                    />
+                  </ul>
+                </ul>
+              </>
+            );
+            return list;
+          })}
         </div>
       </main>
     </>
-  )
+  );
 }
